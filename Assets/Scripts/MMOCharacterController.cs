@@ -1,17 +1,17 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class MMOCharacterController : MonoBehaviour
 {
-    private Vector3 movement;
-    private float mouseX, mouseY;
-    public Transform playerCam, character, centerPoint;
-    public float currentZoom = 10f;
-    public float gravity = 20f, jumpSpeed = 8f;
-    public float mouseYPosition = 1f;
-    public float moveSpeed = 10f, strafeSpeed = 8f,rotateSpeed = 2f;
-    public float zoomMax = -10f,zoomMin = -2f, zoomSpeed = 2f;
+    private Vector3 movement;                                                           //movement vector
+    private float mouseX, mouseY;                                                       //mouse position
+    public Transform playerCam, character, centerPoint;                                 //camera, character, and camera center point transforms
+    public float gravity = 20f, jumpSpeed = 8f;                                         //variables storing gravity factor and jump speed
+    public float mouseYPosition = 1f;                                                   //height at which the camera is off the ground initially
+    public float moveSpeed = 10f, strafeSpeed = 8f, rotateSpeed = 2f;                    //speed of the character, speed it strafes, and speed it rotates
+    public float zoomSpeed = 2f, currentZoom = 10f, zoomMax = -10f, zoomMin = -2f;      //zoom speed, current camera zoom, and max/min zoom level
+    private CursorLockMode wantedMode;                                                  //stores current desired mode of mouse lock
 
-    // Update is called once per frame
     void Update()
     {
         currentZoom += Input.GetAxis("Mouse ScrollWheel") * zoomSpeed;
@@ -26,11 +26,10 @@ public class MMOCharacterController : MonoBehaviour
 
         playerCam.transform.localPosition = new Vector3(0f, 0f, currentZoom);
 
-        if (Input.GetMouseButton(1))
+        if (Input.GetMouseButton(1) | Input.GetMouseButton(0))
         {
             mouseX += Input.GetAxis("Mouse X") * rotateSpeed;
             mouseY -= Input.GetAxis("Mouse Y") * rotateSpeed;
-            Cursor.visible = false;
         }
         mouseY = Mathf.Clamp(mouseY, -60f, 60f);
         playerCam.LookAt(centerPoint);
@@ -38,7 +37,6 @@ public class MMOCharacterController : MonoBehaviour
 
         movement.z = Input.GetAxis("Vertical") * moveSpeed;
         movement.x = Input.GetAxis("Horizontal") * strafeSpeed;
-        //movement = new Vector3(moveLR, 0f, moveFB);
         //gravity works
         if (character.GetComponent<CharacterController>().isGrounded && Input.GetButton("Jump"))
         {
@@ -55,7 +53,7 @@ public class MMOCharacterController : MonoBehaviour
         character.GetComponent<CharacterController>().Move(movement * Time.deltaTime);
         centerPoint.position = new Vector3(character.position.x, character.position.y + mouseYPosition, character.position.z);
 
-        if (Input.GetAxis("Vertical") > 0f | Input.GetAxis("Vertical") < 0f)
+        if (!Input.GetMouseButton(0)&&Input.GetMouseButton(1))
         {
             Quaternion turnAngle = Quaternion.Euler(0f, centerPoint.eulerAngles.y, 0);
             character.rotation = turnAngle;
@@ -63,4 +61,49 @@ public class MMOCharacterController : MonoBehaviour
 
     }
 
+
+    // Apply requested cursor state
+    void SetCursorState()
+    {
+        Cursor.lockState = wantedMode;
+        // Hide cursor when locking
+        Cursor.visible = (CursorLockMode.Locked != wantedMode);
+    }
+
+    void OnGUI()
+    {
+        GUILayout.BeginVertical();
+        // Release cursor on escape keypress
+        if (Input.GetKeyDown(KeyCode.Escape))
+            Cursor.lockState = wantedMode = CursorLockMode.None;
+
+        switch (Cursor.lockState)
+        {
+            case CursorLockMode.None:
+                GUILayout.Label("Cursor is normal");
+                if (GUILayout.Button("Lock cursor"))
+                    wantedMode = CursorLockMode.Locked;
+                if (GUILayout.Button("Confine cursor"))
+                    wantedMode = CursorLockMode.Confined;
+                break;
+            case CursorLockMode.Confined:
+                GUILayout.Label("Cursor is confined");
+                if (GUILayout.Button("Lock cursor"))
+                    wantedMode = CursorLockMode.Locked;
+                if (GUILayout.Button("Release cursor"))
+                    wantedMode = CursorLockMode.None;
+                break;
+            case CursorLockMode.Locked:
+                GUILayout.Label("Cursor is locked");
+                if (GUILayout.Button("Unlock cursor"))
+                    wantedMode = CursorLockMode.None;
+                if (GUILayout.Button("Confine cursor"))
+                    wantedMode = CursorLockMode.Confined;
+                break;
+        }
+
+        GUILayout.EndVertical();
+
+        SetCursorState();
+    }
 }
